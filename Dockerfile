@@ -81,7 +81,8 @@ RUN mkdir -p /etc/nginx && \
 COPY files/nginx.conf   /etc/nginx/nginx.conf
 COPY files/mime.types   /etc/nginx/mime.types
 COPY files/validator.pm /opt/nginx/perl/lib/validator.pm
+COPY entrypoint.sh /opt/entrypoint.sh
 
 EXPOSE 80 8090
 
-CMD ["/opt/nginx/sbin/nginx"]
+ENTRYPOINT /opt/entrypoint.sh
