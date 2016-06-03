@@ -15,8 +15,32 @@ RUN apt-get update && \
       libpcre3 \
       libpcre3-dev \
       libssl-dev \
+      wget \
+      vim \
       libperl-dev && \
     rm -rf /var/lib/apt/lists/*
+
+# Install nodejs
+RUN apt-get install git && \
+    cd /tmp && \
+    wget https://nodejs.org/dist/v4.2.3/node-v4.2.3-linux-x64.tar.gz && \
+    mkdir /node && \
+    tar xvf node-v*.tar.?z --strip-components=1 -C /node && \
+    mkdir /node/etc && \
+    echo 'prefix=/usr/local' > /node/etc/npmrc && \
+    mv /node /opt/ && \
+    chown -R root: /opt/node && \
+    ln -s /opt/node/bin/node /usr/local/bin/node && \
+    ln -s /opt/node/bin/npm /usr/local/bin/npm && \
+    node -v
+
+# Install forever
+RUN npm install forever -g
+
+# Install npm deps
+RUN cd /node && \
+    npm install multiparty && \
+    npm install lodash
 
 # Build ImageMagick with WebP support
 RUN mkdir -p /tmp/imagemagick && \
@@ -55,6 +79,15 @@ RUN curl -L https://github.com/cubicdaiya/ngx_small_light/archive/v${NGX_SMALL_L
     cd /tmp/ngx_small_light-${NGX_SMALL_LIGHT_VERSION} && \
     ./setup
 
+# Fetch and unarchive nginx-upload-module
+RUN curl -L https://api.github.com/repos/vkholodkov/nginx-upload-module/tarball/2.2 > /tmp/nginx-upload-module-2.2.0.tar.gz && \
+    cd /tmp && \
+    tar zxf nginx-upload-module-2.2.0.tar.gz && \
+    ls -la /tmp && \
+    ls -la /tmp/vkholodkov-nginx-upload-module-aba1e3f && \
+    cat /tmp/vkholodkov-nginx-upload-module-aba1e3f/config
+
+
 # Compile nginx
 RUN cd /tmp/nginx-${NGINX_VERSION} && \
     ./configure \
@@ -64,7 +97,8 @@ RUN cd /tmp/nginx-${NGINX_VERSION} && \
       --with-http_stub_status_module \
       --with-http_perl_module \
       --with-pcre \
-      --add-module=/tmp/ngx_small_light-${NGX_SMALL_LIGHT_VERSION} && \
+      --add-module=/tmp/ngx_small_light-${NGX_SMALL_LIGHT_VERSION} \
+      --add-module=/tmp/vkholodkov-nginx-upload-module-aba1e3f && \
     make && \
     make install && \
     rm -rf /tmp/*
@@ -81,6 +115,7 @@ RUN mkdir -p /etc/nginx && \
 COPY files/nginx.conf   /etc/nginx/nginx.conf
 COPY files/mime.types   /etc/nginx/mime.types
 COPY files/validator.pm /opt/nginx/perl/lib/validator.pm
+COPY files/renameImage.js /nodeApp/renameImage.js
 COPY entrypoint.sh /opt/entrypoint.sh
 
 EXPOSE 80 8090
