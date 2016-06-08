@@ -1,45 +1,52 @@
-UPLOAD_DIR = "/var/www/nginx/images";
+const UPLOAD_DIR = "/var/www/nginx/images";
+// const UPLOAD_DIR = "/Users/alino/Meteor/kukni.to/.docker/nginx-image-server/files";
+const PORT = 8091;
 
-var multiparty = require('multiparty');
-var http = require('http');
-var util = require('util');
-var _ = require('lodash');
+
+var express = require('express');
+var bodyParser = require('body-parser');
 var fs = require('fs');
+var mkdirp = require('mkdirp');
+var path = require('path');
+var app = express();
 
-http.createServer(function(req, res) {
-    if (req.url === '/upload' && req.method === 'POST') {
-        // parse a file upload
-        var options = {
-            uploadDir: UPLOAD_DIR
-        };
-        var form = new multiparty.Form(options);
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-        form.parse(req, function(err, fields, files) {
-            res.writeHead(200, {'content-type': 'text/plain'});
-            res.write('received upload:\n\n');
-            res.end(util.inspect({fields: fields, files: JSON.stringify(files)}));
-            // give correct name and path to the file
-            _.each(files.upload, function(file) {
-                if (fields.path != null && fields.path.length > 0) {
-                    file.newPath = UPLOAD_DIR + "/" + fields.path[0];
-                    fs.rename(file.path, file.newPath, function (err) {
-                        console.error(err);
-                    });
+app.get('/', function(req, res) {
+    var html = '<html><body><form method="post" action="http://localhost:'+PORT+'">Name: <input type="text" name="name" /><input type="submit" value="Submit" /></form></body>';
+    // var html = fs.readFileSync('index.html');
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.end(html);
+});
+
+app.post('/upload', function(req, res) {
+    // console.log(req);
+    console.dir(req.body);
+
+    // save the file
+    const base64Data = req.body.file.replace(/^data:image\/(png|gif|jpeg);base64,/,'');
+    const filePath = req.body.path;
+    const fileName = req.body.filename;
+    const fileDir = path.join(UPLOAD_DIR, filePath);
+    const fullPath = path.join(UPLOAD_DIR, filePath, fileName);
+    mkdirp(fileDir, function (err) {
+        if (err) console.error(err);
+        else {
+            console.log('created dirs for path: ', fileDir);
+            fs.writeFile(fullPath, new Buffer(base64Data, 'base64'), function (err) {
+                if (err) console.error(err);
+                else {
+                    console.log('written image to path: ', fullPath);
                 }
-            })
-        });
+            });
+        }
+    });
 
 
-        return;
-    }
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.end('thanks');
+});
 
-    // show a file upload form
-    res.writeHead(200, {'content-type': 'text/html'});
-    res.end(
-        '<form action="/upload" enctype="multipart/form-data" method="post">'+
-        '<input type="text" name="path"><br>'+
-        '<input type="file" name="upload" multiple="multiple"><br>'+
-        '<input type="submit" value="Upload">'+
-        '</form>'
-    );
-}).listen(8091);
+app.listen(PORT);
+console.log('Listening at http://localhost:' + PORT);

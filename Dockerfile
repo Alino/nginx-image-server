@@ -38,9 +38,12 @@ RUN apt-get install git && \
 RUN npm install forever -g
 
 # Install npm deps
-RUN cd /node && \
-    npm install multiparty && \
-    npm install lodash
+RUN mkdir nodeApp && \
+    cd /nodeApp && \
+    npm install express && \
+    npm install body-parser && \
+    npm install mkdirp && \
+    npm install path
 
 # Build ImageMagick with WebP support
 RUN mkdir -p /tmp/imagemagick && \
